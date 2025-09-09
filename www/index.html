@@ -164,12 +164,27 @@
 <body>
 <canvas id="glcanvas"></canvas>
 
-<div id="ui">
+<div class="collapsed" id="ui">
   <div id="ui-header" onclick="toggleUI()">
     <span id="ui-title">🌀 FRACTUBE</span>
-    <button id="ui-toggle">▼</button>
+    <button id="ui-toggle"></button>
   </div>
   <div id="ui-content">
+     <!-- Actions -->
+     <div class="section-divider">
+      <label>Actions</label>
+    </div>
+    <button id="resetBtn" class="action-btn">🎯 Reset View</button>
+    <button id="shareBtn" class="action-btn share-btn">🔗 Copy Share URL</button>
+    <button id="downloadBtn" class="action-btn download-btn">💾 Download PNG</button>
+    
+    <!-- URL Display -->
+    <div class="section-divider">
+      <label>Share URL</label>
+    </div>
+    <input type="text" id="url-input" readonly placeholder="URL will appear here..." onclick="this.select()">
+    
+    <div style="margin-top:8px; color:#9a9; font-size:10px;">Mouse: drag=pan, wheel=zoom</div>
     <!-- Fractal Parameters -->
     <div class="param-group">
       <label>Iterations <span class="val" id="iterVal">64</span></label>
@@ -182,7 +197,7 @@
     <div class="param-group">
       <label>Scale <span class="val" id="scaleVal">0.500</span></label>
       <div class="quad-slider">
-        <input id="scale" type="range" min="0.0" max="1.0" step="0.001" value="0.123" class="coarse">
+        <input id="scale" type="range" min="-2.0" max="2.0" step="0.001" value="0.000" class="coarse">
         <input id="scaleFine1" type="range" min="-0.1" max="0.1" step="0.001" value="0.0" class="fine">
         <input id="scaleFine2" type="range" min="-0.01" max="0.01" step="0.0001" value="0.0" class="fine">
         <input id="scaleFine3" type="range" min="-0.001" max="0.001" step="0.00001" value="0.0" class="fine">
@@ -192,7 +207,7 @@
     <div class="param-group">
       <label>Density <span class="val" id="densVal">0.100</span></label>
       <div class="dual-slider">
-        <input id="dens" type="range" min="-1.0" max="1.0" step="0.001" value="0.038" class="coarse">
+        <input id="dens" type="range" min="-3.14159265359" max="3.14159265359" step="0.001" value="0.069" class="coarse">
         <input id="densFine" type="range" min="-0.1" max="0.1" step="0.001" value="0.0" class="fine">
       </div>
     </div>
@@ -200,8 +215,8 @@
     <div class="param-group">
       <label>Speed <span class="val" id="spdVal">1.2222222</span></label>
       <div class="dual-slider">
-        <input id="speed" type="range" min="0.1" max="4.0" step="0.001" value="1.2222222" class="coarse">
-        <input id="speedFine" type="range" min="-0.2" max="0.2" step="0.001" value="0.0" class="fine">
+        <input id="speed" type="range" min="0.0" max="2.0" step="0.001" value="0.0" class="coarse">
+        <input id="speedFine" type="range" min="-0.1" max="0.1" step="0.001" value="0.0" class="fine">
       </div>
     </div>
     
@@ -262,7 +277,7 @@
     </div>
     
     <div class="row">
-      <label><input type="checkbox" id="antialiasing"> Anti-aliasing</label>
+      <label><input type="checkbox" id="antialiasing" checked> Anti-aliasing</label>
       <label><input type="checkbox" id="grayscale" checked> Grayscale</label>
     </div>
     
@@ -297,27 +312,13 @@
       </div>
     </div>
     
-    <!-- Actions -->
-    <div class="section-divider">
-      <label>Actions</label>
-    </div>
-    <button id="resetBtn" class="action-btn">🎯 Reset View</button>
-    <button id="shareBtn" class="action-btn share-btn">🔗 Copy Share URL</button>
-    <button id="downloadBtn" class="action-btn download-btn">💾 Download PNG</button>
-    
-    <!-- URL Display -->
-    <div class="section-divider">
-      <label>Share URL</label>
-    </div>
-    <input type="text" id="url-input" readonly placeholder="URL will appear here..." onclick="this.select()">
-    
-    <div style="margin-top:8px; color:#9a9; font-size:10px;">Mouse: drag=pan, wheel=zoom</div>
+   
   </div>
 </div>
 
 <!-- Copyright Notice -->
 <div class="copyright">
-  Orbital Fractal © Discovered by [Your Name]
+  Fractube © 2025
 </div>
 
 <script>
@@ -650,7 +651,10 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
+
+
 // WebGL setup
+
 const vs = `
 attribute vec2 a_pos;
 varying vec2 v_uv;
@@ -661,6 +665,7 @@ void main(){
 `;
 
 const fs = `
+
 #ifdef GL_ES
 precision highp float;
 #endif
@@ -681,78 +686,85 @@ uniform vec2  u_pan;
 uniform float u_zoom;
 uniform bool  u_grayscale;
 
+// Tetrahedron vertices
 const vec3 TETRA_0 = vec3( 1.0,  1.0,  1.0);
 const vec3 TETRA_1 = vec3( 1.0, -1.0, -1.0);
 const vec3 TETRA_2 = vec3(-1.0,  1.0, -1.0);
 const vec3 TETRA_3 = vec3(-1.0, -1.0,  1.0);
 
+
 vec3 hsv2rgb(vec3 c){
-  vec4 K=vec4(1.0,2.0/3.0,1.0/3.0,3.0);
-  vec3 p=abs(fract(c.xxx+K.xyz)*6.0-K.www);
-  return c.z*mix(K.xxx,clamp(p-K.xxx,0.0,1.0),c.y);
+  vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
 vec3 accel(vec3 from, vec3 to){
   vec3 r = to - from;
-  float d2 = dot(r,r) + 1.0;
+  float d2 = dot(r, r) + 1.0;
   float inv = inversesqrt(d2);
-  return r * (inv * inv * inv) * u_speed;
+  return r * (inv * inv * inv);
 }
 
-float evalFractal(vec2 uv){
+
+float evalFractalTetra(vec2 uv){
   vec2 res = u_resolution;
   float aspect = res.x / max(res.y, 1.0);
   vec2 p = (uv * 2.0 - 1.0);
   p.x *= aspect;
   p = (p / u_zoom) + u_pan;
+  
   float d = u_density;
-  vec3 P = vec3(p, 0);
-  vec3 s = vec3(d * sin(P.x), d * sin(P.y), d * u_scale);
+  vec3 P = u_zoom > 1.0 && (u_pan.x * u_pan.x + u_pan.y * u_pan.y) < 3.14 ? vec3(p, 0) : vec3(sin(p.x), sin(p.y), 0);
+
+  vec3 s = vec3(d * P.x, d * P.y, d * u_scale);
 
   vec3 pos0 = TETRA_0 * s;
   vec3 pos1 = TETRA_1 * s;
   vec3 pos2 = TETRA_2 * s;
   vec3 pos3 = TETRA_3 * s;
-
+  vec3 pos4 = vec3(0.0);
+  
   vec3 v0 = vec3(0.0);
-  vec3 v1 = vec3(0.0);
-  vec3 v2 = vec3(0.0);
+  vec3 v1 = vec3(0.00);
+  vec3 v2 = vec3(0.00);
   vec3 v3 = vec3(0.0);
-
-  //v0.x = 1.0;
+  vec3 v4 = vec3(u_speed);
 
   int esc = u_iterations;
-  for (int i=0;i<256;i++){
-    if (i>=u_iterations) break;
+  for (int i = 0; i < 256; i++){
+    if (i >= u_iterations) break;
 
-    vec3 a0 = accel(pos0,pos1) + accel(pos0,pos2) + accel(pos0,pos3);
-    vec3 a1 = accel(pos1,pos0) + accel(pos1,pos2) + accel(pos1,pos3);
-    vec3 a2 = accel(pos2,pos0) + accel(pos2,pos1) + accel(pos2,pos3);
-    vec3 a3 = accel(pos3,pos0) + accel(pos3,pos1) + accel(pos3,pos2);
+    vec3 a0 = accel(pos0, pos1) + accel(pos0, pos2) + accel(pos0, pos3) + accel(pos0, pos4);
+    vec3 a1 = accel(pos1, pos0) + accel(pos1, pos2) + accel(pos1, pos3) + accel(pos1, pos4);
+    vec3 a2 = accel(pos2, pos0) + accel(pos2, pos1) + accel(pos2, pos3) + accel(pos2, pos4);
+    vec3 a3 = accel(pos3, pos0) + accel(pos3, pos1) + accel(pos3, pos2) + accel(pos3, pos4);
+    vec3 a4 = accel(pos4, pos0) + accel(pos4, pos1) + accel(pos4, pos2) + accel(pos4, pos3);
 
-    v0 += a0; v1 += a1; v2 += a2; v3 += a3;
-    pos0 += v0; pos1 += v1; pos2 += v2; pos3 += v3;
+    v0 += a0; v1 += a1; v2 += a2; v3 += a3; v4 += a4;
+    pos0 += v0; pos1 += v1; pos2 += v2; pos3 += v3; pos4 += v4;
 
-    if (dot(v0,v0)>1.0 || dot(v1,v1)>1.0 || dot(v2,v2)>1.0 || dot(v3,v3)>1.0){
-      esc = i; break;
+    if (dot(v0, v0) > 1.0 || dot(v1, v1) > 1.0 || 
+        dot(v2, v2) > 1.0 || dot(v3, v3) > 1.0 || dot(v4,v4) > 1.0){
+      esc = i; 
+      break;
     }
   }
   return float(esc) / float(u_iterations);
 }
 
+
 void main(){
-  float value = evalFractal(v_uv);
+  // Choose your fractal version:
+  float value = evalFractalTetra(v_uv);        // Original tetrahedron (fastest)
   float hue = sin(value * u_colorFreq + u_colorPhase) * 0.5 + 0.5;
-  
-  // Use enhanced HSV controls with extended saturation range
+
   vec3 color = hsv2rgb(vec3(hue, u_colorSaturation, u_colorBrightness));
-  
-  // Apply contrast
   color = pow(color, vec3(u_colorContract));
 
   if (u_grayscale){
     float g = dot(color, vec3(0.2126, 0.7152, 0.0722));
-    color = vec3(g,g,g);
+    color = vec3(g, g, g);
   }
 
   gl_FragColor = vec4(color, 1.0);
@@ -1000,15 +1012,15 @@ function renderFrame() {
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   gl.uniform2f(U.res, canvas.width, canvas.height);
-  gl.uniform1i(U.iter, Math.max(4, Math.min(256, Math.round(params.iter.getValue()))));
-  gl.uniform1f(U.scale, Math.max(0.1, Math.min(5.0, params.scale.getValue())));
-  gl.uniform1f(U.dens, Math.max(-1.0, Math.min(1.0, params.dens.getValue())));
-  gl.uniform1f(U.speed, Math.max(0.1, Math.min(4.0, params.speed.getValue())));
-  gl.uniform1f(U.cf, Math.max(0.0, Math.min(10.0, params.cf.getValue())));
+  gl.uniform1i(U.iter, Math.round(params.iter.getValue()));
+  gl.uniform1f(U.scale,params.scale.getValue());
+  gl.uniform1f(U.dens, params.dens.getValue());
+  gl.uniform1f(U.speed, params.speed.getValue());
+  gl.uniform1f(U.cf, params.cf.getValue());
   gl.uniform1f(U.ph, params.ph.getValue());
-  gl.uniform1f(U.contract, Math.max(0.0, Math.min(2.0, params.contract.getValue())));
-  gl.uniform1f(U.sat, Math.max(0.0, Math.min(2.0, params.sat.getValue())));
-  gl.uniform1f(U.brightness, Math.max(0.0, Math.min(2.0, params.brightness.getValue())));
+  gl.uniform1f(U.contract, params.contract.getValue());
+  gl.uniform1f(U.sat, params.sat.getValue());
+  gl.uniform1f(U.brightness, params.brightness.getValue());
   gl.uniform2f(U.pan, pan.x, pan.y);
   gl.uniform1f(U.zoom, zoom);
   gl.uniform1i(U.gray, !!elGrayscale.checked);
